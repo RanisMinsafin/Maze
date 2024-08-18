@@ -1,0 +1,106 @@
+plugins {
+    id 'java'
+    id 'application'
+    id "io.freefair.lombok" version "8.6"
+    id 'org.javamodularity.moduleplugin' version '1.8.12'
+    id 'org.openjfx.javafxplugin' version '0.0.13'
+    id 'org.beryx.jlink' version '2.25.0'
+    id 'jacoco'
+}
+
+group 'edu.school'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    junitVersion = '5.10.0'
+}
+
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainModule = 'edu.school'
+    mainClass = 'edu.school.MazeApplication'
+}
+
+javafx {
+    version = '21'
+    modules = ['javafx.controls', 'javafx.fxml']
+}
+
+dependencies {
+    implementation('org.controlsfx:controlsfx:11.1.2')
+    implementation('net.synedra:validatorfx:0.4.0') {
+        exclude(group: 'org.openjfx')
+    }
+    implementation('org.kordamp.bootstrapfx:bootstrapfx-core:0.4.0')
+
+    testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
+}
+
+test {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport // Автоматический запуск отчета после тестов
+}
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+jacocoTestReport {
+    dependsOn test // Отчет о покрытии должен быть после выполнения тестов
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+task uninstall(type: Delete) {
+    delete 'build'
+}
+
+tasks.register('uninstallAndTest') {
+    dependsOn 'uninstall'
+    finalizedBy 'test'
+}
+
+jlink {
+    imageZip = project.file("${buildDir}/distributions/app-${javafx.platform.classifier}.zip")
+    options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
+    launcher {
+        name = 'app'
+    }
+}
+
+jlinkZip {
+    group = 'distribution'
+}
+
+jar {
+    archiveBaseName.set('maze')
+    archiveVersion.set(version)
+    manifest {
+        attributes(
+                'Main-Class': 'edu.school.MazeApplication'
+        )
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+task dist(type: Zip) {
+    dependsOn jar
+    from('build/libs') {
+        include '*.jar'
+    }
+    archiveFileName = "maze-${version}.zip"
+    destinationDirectory = file("${buildDir}/distributions")
+}
